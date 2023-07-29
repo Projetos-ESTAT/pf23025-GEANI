@@ -134,6 +134,8 @@ svy_bgadjust <- function(bancoAdj, d, d1, d0, t, t1, t0) {
   
   return(list(
     table = res,
+    n1 = n1,
+    n0 = n0,
     sens_adjusted = sens_adjusted, 
     spec_adjusted = spec_adjusted,
     RVP_adjusted = sens_adjusted/(1-spec_adjusted),
