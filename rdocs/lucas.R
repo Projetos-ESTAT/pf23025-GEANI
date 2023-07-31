@@ -152,7 +152,7 @@ sexo <- banco_dengue_tr %>%
   )
 
 grafico_sexo <- ggplot(sexo) +
-  aes(x = B04_SEXO, y = n, label = label) +
+  aes(x = fct_reorder(B04_SEXO, n, .desc=T), y = n, label = label) +
   geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
@@ -177,7 +177,7 @@ cor_raca <- banco_dengue_tr %>%
   )
 
 grafico_cor <- ggplot(cor_raca) +
-  aes(x = `Cor/Raça`, y = n, label = label) +
+  aes(x = fct_reorder(`Cor/Raça`, n, .desc=T), y = n, label = label) +
   geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
@@ -203,7 +203,7 @@ vacina <- banco_dengue_tr %>%
   )
 
 grafico_vacina <- ggplot(vacina) +
-  aes(x = fct_reorder(D13_FEBRE_VACINA, n, .desc=F), y = n, label = label )+
+  aes(x = fct_reorder(D13_FEBRE_VACINA, n, .desc=T), y = n, label = label )+
   geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
