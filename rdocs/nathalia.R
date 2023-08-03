@@ -47,7 +47,7 @@ dados2 <- dados %>%
              DENGUE3_PRNT20 == "POS" ~ "POS", 
            DENGUE1_PRNT20 %in% c("NEG", NA) & 
              DENGUE2_PRNT20 %in% c("NEG", NA) & 
-             DENGUE3_PRNT20 %in% c("NEG", NA) ~ "NEG") %>% 
+             DENGUE3_PRNT20 %in% c("NEG", NA, "/") ~ "NEG") %>% 
            as.factor(),
          DENGUE_PRNT20_2 = case_when(
            DENGUE1_PRNT20 == "POS" | 
@@ -56,9 +56,7 @@ dados2 <- dados %>%
            DENGUE1_PRNT20 == "NEG" & 
              DENGUE2_PRNT20 == "NEG" & 
              DENGUE3_PRNT20 == "NEG" ~ "NEG",
-         is.na(DENGUE1_PRNT20) & 
-           is.na(DENGUE2_PRNT20) & 
-           is.na(DENGUE3_PRNT20) ~ "IND")%>% 
+           TRUE ~ "IND")%>% 
            as.factor(),
          ZIK_PRNT20_2 = case_when(
            ZIK_PRNT20 == "POS" ~ "POS", 
@@ -90,6 +88,47 @@ sangue <-
                                  "b00_numero" == "B00_NUMERO")
     ) 
 
+################################  AMOSTRAGEM  ################################
+
+# -------------------------------- Parte 1 ----------------------------------- #
+
+#### tabela Begg e Grenes, adaptado por Alonzo - sem pesos amostrais ####
+
+### para Dengue ###
+
+table(sangue$DENGUE_PRNT20_2,sangue$F03_D_G_VALOR_C)
+addmargins(table(sangue$DENGUE_PRNT20_2,sangue$F03_D_G_VALOR_C))
+# difícil vizualização
+
+# alterando a ordem
+DENGUE_PRNT20_2 <- factor(sangue$DENGUE_PRNT20_2, 
+                          levels = c("POS", "NEG", "IND"))
+F03_D_G_VALOR_C <- factor(sangue$F03_D_G_VALOR_C, 
+                          levels = c(c("Reagente", "Não reagente")))
+
+# bemm melhor
+table(DENGUE_PRNT20_2,F03_D_G_VALOR_C)
+tabela_dengue <- addmargins(table(DENGUE_PRNT20_2,F03_D_G_VALOR_C),1)
+tabela_dengue
+
+### para Zika ###
+
+table(sangue$ZIK_PRNT20_3,sangue$F07_Z_G_VALOR_C)
+addmargins(table(sangue$ZIK_PRNT20_3,sangue$F07_Z_G_VALOR_C))
+# difícil vizualização
+
+# alterando a ordem
+ZIK_PRNT20_3 <- factor(sangue$ZIK_PRNT20_3, 
+                       levels = c("POS", "NEG", "IND"))
+F07_Z_G_VALOR_C <- factor(sangue$F07_Z_G_VALOR_C, 
+                          levels = c(c("Reagente", "Não reagente")))
+
+
+# bemm melhor
+table(ZIK_PRNT20_3,F07_Z_G_VALOR_C)
+tabela_zika <- addmargins(table(ZIK_PRNT20_3,F07_Z_G_VALOR_C),1)
+tabela_zika
+
 #### adicionando os pesos amostrais ####
 
 bancoAdj <- srvyr::as_survey_design(sangue, ids = c(ids = p06_upa, x06_domicilio), 
@@ -98,9 +137,6 @@ bancoAdj <- srvyr::as_survey_design(sangue, ids = c(ids = p06_upa, x06_domicilio
                                     weights = peso_teste, 
                                     nest = TRUE)
 
-################################  AMOSTRAGEM  ################################
-
-# -------------------------------- Parte 1 ----------------------------------- #
 
 ### função Begg e Grenes, adaptado por Alonzo, com RVP e RVN ###
 # RV - razão de verossimilhança
@@ -146,22 +182,7 @@ svy_bgadjust <- function(bancoAdj, d, d1, d0, t, t1, t0) {
 
 #### sensibilidade, especificidade, RVP e RVN - DENGUE ####
 
-### NEG e NA juntos
-svy_bgadjust(
-  bancoAdj, 
-  DENGUE_PRNT20, 
-  "POS",
-  "NEG",
-  F03_D_G_VALOR_C,
-  "Reagente",
-  "Não reagente"
-)
-# sensibilidade = 98,26%
-# especificidade = 34,53%
-# RVP = 1,5
-# RVN = 0,05
-
-### NEG e NA separados
+#obs: NEG e NA separados
 svy_bgadjust(
   bancoAdj, 
   DENGUE_PRNT20_2, 
@@ -178,22 +199,7 @@ svy_bgadjust(
 
 #### sensibilidade e especificidade, RVP e RVN - ZIKA ####
 
-### NEG e NA juntos
-svy_bgadjust(
-  bancoAdj, 
-  ZIK_PRNT20_2, 
-  "POS",
-  "NEG",
-  F07_Z_G_VALOR_C,
-  "Reagente",
-  "Não reagente"
-)
-# sensibilidade = 99,61%
-# especificidade = 64,56%
-# RVP = 2,81
-# RVN = 0,01
-
-### NEG e NA separados
+#obs: NEG e NA separados
 svy_bgadjust(
   bancoAdj, 
   ZIK_PRNT20_3, 
@@ -207,38 +213,6 @@ svy_bgadjust(
 # especificidade = 77,1%
 # RVP = 4
 # RVN = 0,11
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
