@@ -159,4 +159,3 @@ conf_mat <- confusionMatrix(factor(as.numeric((bancoRed$f11_c_g_valor > 18))),
                             factor(bancoRed$CHIK_PRNT20), positive = "1")
 conf_mat$table
 conf_mat$byClass[c("Sensitivity", "Specificity")]
-
