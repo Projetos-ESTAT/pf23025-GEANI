@@ -190,7 +190,7 @@ roc(bancoRedValid$CHIK_PRNT20, predict(modAIC,bancoRedValid, type = "response"),
 
 #modelo todas var
 mod1 <- svyglm(factor(CHIK_PRNT20) ~ Sexo + b05_idade + d13_febre_vacina + c01_tipo
-               +f11_c_g_valor + factor(b06_cor),family = binomial, design = plano)
+               +sqrt(f11_c_g_valor) + factor(b06_cor),family = binomial, design = plano)
 
 summary(mod1)
 
@@ -297,7 +297,7 @@ summary(modAIC)
 modAIC$aic
 
 #melhor valor de corte 0.25 (testar 0.07)
-modAIC$acc <- sum((predict(modAIC, type = "response")>=0.07)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+modAIC$acc <- sum((predict(modAIC, type = "response")>=0.25)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
 
 modAIC$acc
 
@@ -308,7 +308,7 @@ roc(bancoRed$CHIK_PRNT20, predict(modAIC, type = "response"),
     plot=T)
 
 #melhor valor de corte 0.25 (testar 0.07)
-conf_mat <- confusionMatrix(factor(as.numeric(predict(mod1, type = "response")>=0.07)),
+conf_mat <- confusionMatrix(factor(as.numeric(predict(mod1, type = "response")>=0.25)),
                             factor(bancoRed$CHIK_PRNT20), positive = "1")
 conf_mat$table
 conf_mat$byClass[c("Sensitivity", "Specificity")]
