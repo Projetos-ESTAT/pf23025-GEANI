@@ -133,7 +133,7 @@ modAIC$acc
 
 
 #Matriz de Confusão
-conf_mat <- confusionMatrix(factor(as.numeric(predict(modAIC, type = "response")>=0.065)),
+conf_mat <- confusionMatrix(factor(as.numeric(predict(modAIC, type = "response")>=0.1)),
                             factor(bancoRed$CHIK_PRNT20), positive = "1")
 conf_mat$table
 conf_mat$byClass[c("Sensitivity", "Specificity")]
