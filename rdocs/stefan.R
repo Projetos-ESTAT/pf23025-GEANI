@@ -3,7 +3,7 @@ pacman::p_load("readxl", "dplyr", "purrr",
                "glue", "ggplot2", "ggpubr",
                "kableExtra", "caret", "pROC",
                "plotROC", "tibble", "reticulate", "glmtoolbox",
-               "survey", "MASS")
+               "survey", "MASS", "caret")
 
 # ---------------------------------------------------------------------------- #
 
@@ -196,7 +196,8 @@ summary(mod1)
 
 mod1$aic
 
-mod1$acc <- sum((predict(mod1, type = "response")>=0.5)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+#melhor valor de corte 0.3
+mod1$acc <- sum((predict(mod1, type = "response")>=0.3)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
 
 mod1$acc
 
@@ -205,6 +206,14 @@ roc(bancoRed$CHIK_PRNT20, predict(mod1, type = "response"),
     col = "red",
     print.auc = TRUE,
     plot=T)
+
+#melhor valor de corte 0.3 (testar 0.7)
+conf_mat <- confusionMatrix(factor(as.numeric(predict(mod1, type = "response")>=0.3)),
+                            factor(bancoRed$CHIK_PRNT20), positive = "1")
+conf_mat$table
+conf_mat$byClass[c("Sensitivity", "Specificity")]
+
+
 
 #modelo sem sexo
 mod2 <- svyglm(factor(CHIK_PRNT20) ~ b05_idade  + d13_febre_vacina + c01_tipo
@@ -287,7 +296,8 @@ summary(modAIC)
 
 modAIC$aic
 
-modAIC$acc <- sum((predict(modAIC, type = "response")>=0.5)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+#melhor valor de corte 0.25 (testar 0.07)
+modAIC$acc <- sum((predict(modAIC, type = "response")>=0.07)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
 
 modAIC$acc
 
@@ -297,4 +307,18 @@ roc(bancoRed$CHIK_PRNT20, predict(modAIC, type = "response"),
     print.auc = TRUE,
     plot=T)
 
+#melhor valor de corte 0.25 (testar 0.07)
+conf_mat <- confusionMatrix(factor(as.numeric(predict(mod1, type = "response")>=0.07)),
+                            factor(bancoRed$CHIK_PRNT20), positive = "1")
+conf_mat$table
+conf_mat$byClass[c("Sensitivity", "Specificity")]
 
+
+#Acurácia dado corte 18 e 22
+
+sum((bancoRed$f11_c_g_valor > 18)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+
+conf_mat <- confusionMatrix(factor(as.numeric((bancoRed$f11_c_g_valor > 18))),
+                            factor(bancoRed$CHIK_PRNT20), positive = "1")
+conf_mat$table
+conf_mat$byClass[c("Sensitivity", "Specificity")]
