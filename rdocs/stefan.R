@@ -47,7 +47,7 @@ bancoRed <- bancoRed %>% dplyr::filter(d13_febre_vacina!="Não sabe")
 #AGRUPAR RAÇA NEGRO E NÃO NEGRO
 bancoRed <- bancoRed %>% dplyr::mutate(b06_cor = case_when(
   b06_cor == 'Branca' ~ 'nao negro',
-  b06_cor == 'Indígena' ~ 'nao negro',
+  b06_cor == 'Indígena' ~ 'negro',
   b06_cor == 'Amarela (origem japonesa, chinesa, coreana etc.)' ~ 'nao negro',
   b06_cor == 'Preta' ~ 'negro',
   b06_cor == 'Parda (mulata, cabocla, cafuza, mameluca ou mestiça)' ~ 'negro'
@@ -65,7 +65,7 @@ bancoRed <- bancoRed %>% dplyr::mutate(CHIK_PRNT20 = case_when(
 plano$variables <- plano$variables %>%
   mutate(b06_cor = case_when(
     b06_cor == 'Branca' ~ 'nao negro',
-    b06_cor == 'Indígena' ~ 'nao negro',
+    b06_cor == 'Indígena' ~ 'negro',
     b06_cor == 'Amarela (origem japonesa, chinesa, coreana etc.)' ~ 'nao negro',
     b06_cor == 'Preta' ~ 'negro',
     b06_cor == 'Parda (mulata, cabocla, cafuza, mameluca ou mestiça)' ~ 'negro',
