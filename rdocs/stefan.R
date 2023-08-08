@@ -40,7 +40,7 @@ bancoRed <- plano$variables
 bancoRed <- bancoRed %>% dplyr::filter(is.na(CHIK_PRNT20)==F)
 
 bancoRed <- bancoRed %>% dplyr::select(CHIK_PRNT20,peso_teste,Sexo,b05_idade,
-                                       d13_febre_vacina,b06_cor,c01_tipo,f11_c_g_valor)
+                                       d13_febre_vacina,b06_cor,c01_tipo, f12_c_g_resultado, f11_c_g_valor)
 
 bancoRed <- bancoRed %>% dplyr::filter(d13_febre_vacina!="Não sabe")
 
@@ -52,7 +52,7 @@ bancoRed <- bancoRed %>% dplyr::mutate(b06_cor = case_when(
   b06_cor == 'Preta' ~ 'negro',
   b06_cor == 'Parda (mulata, cabocla, cafuza, mameluca ou mestiça)' ~ 'negro'
 ))  %>% dplyr::select(CHIK_PRNT20,peso_teste,Sexo,b05_idade,
-                      d13_febre_vacina,c01_tipo,f11_c_g_valor,b06_cor)
+                      d13_febre_vacina,c01_tipo,f11_c_g_valor, f12_c_g_resultado, b06_cor)
 
 bancoRed <- bancoRed %>% dplyr::mutate(CHIK_PRNT20 = case_when(
   CHIK_PRNT20 == 'POS' ~ 1,
@@ -142,20 +142,36 @@ conf_mat$byClass[c("Sensitivity", "Specificity")]
 
 
 
-#variável f11_c_g_valor
-#Acurácia dado corte 18
+#variável f11_c_g_valor e f12_c_g_resultado
+#Acurácia dado f12_c_g_resultado
+bancoRed$f12_c_g_resultado <- ifelse(bancoRed$f12_c_g_resultado == "Positivo/Reativo",
+                                     "1", "0")
 
-sum((bancoRed$f11_c_g_valor > 18)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+
+sum((bancoRed$f12_c_g_resultado)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+
+#Matriz de confusão f12_c_g_resultado
+conf_mat <- confusionMatrix(factor(as.numeric((bancoRed$f12_c_g_resultado))),
+                            factor(bancoRed$CHIK_PRNT20), positive = "1")
+conf_mat$table
+conf_mat$byClass[c("Sensitivity", "Specificity")]
+
+
 
 #Curva ROC
 roc(bancoRed$CHIK_PRNT20, bancoRed$f11_c_g_valor,
     percent=TRUE,
     col = "red",
     print.auc = TRUE,
-    plot=T)
+    plot=T,
+    print.thres=T)
 
-#Matriz de confusão
-conf_mat <- confusionMatrix(factor(as.numeric((bancoRed$f11_c_g_valor > 18))),
+#Acurácia dado corte 14
+sum((bancoRed$f11_c_g_valor>14)==bancoRed$CHIK_PRNT20)/nrow(bancoRed)
+
+
+#Matriz de confusão f11_c_g_valor corte 14
+conf_mat <- confusionMatrix(factor(as.numeric((bancoRed$f11_c_g_valor > 14))),
                             factor(bancoRed$CHIK_PRNT20), positive = "1")
 conf_mat$table
 conf_mat$byClass[c("Sensitivity", "Specificity")]
