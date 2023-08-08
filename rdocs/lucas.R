@@ -33,33 +33,6 @@ library(gridExtra)
 # [1] "C:/Users/Cliente/Desktop/Projetos - ESTAT/PF23025 - GEANI/pf23025-GEANI"
 # > setwd("C:/Users/Cliente/Desktop/Projetos - ESTAT/PF23025 - GEANI/pf23025-GEANI/rdocs")
 
-#----------------------------Cores ESTAT-------------------------------
-cores_estat <-
-  c('#A11D21','#003366','#CC9900','#663333','#FF6600','#CC9966','#999966','#006606','#008091','#041835','#666666')
-
-theme_estat <- function(...) {
-  theme <- ggplot2::theme_bw() +
-    ggplot2::theme(
-      axis.title.y = ggplot2::element_text(colour = "black", size = 12),
-      axis.title.x = ggplot2::element_text(colour = "black", size = 12),
-      axis.text = ggplot2::element_text(colour = "black", size = 9.5),
-      panel.border = ggplot2::element_blank(),
-      axis.line = ggplot2::element_line(colour = "black"),
-      legend.position = "top",
-      ...
-    )
-  
-  return(
-    list(
-      theme,
-      scale_fill_manual(values = cores_estat),
-      scale_colour_manual(values = cores_estat)
-    )
-  )
-}
-
-
-
 #---------------Criando objeto com as variáveis que vamos trabalhar---------
 
 #Pegar cor raça do Plano rds(pq no banco dela está branco e não branco e ela quer negro e não negro)
@@ -266,12 +239,6 @@ ggplot(chik_idade) +
   theme_estat()
 ggsave(filename = file.path(caminho_pct_chik,"colunas-bi-freq-idadechik.pdf"), width = 158, height = 93, units = "mm")
 
-
-
-
-
-
-
 #-----------------------Exploratória Dengue----------------------
 
 #Organizando as Idades de acordo com os grupos da tabela
@@ -286,155 +253,158 @@ banco_dengue_tr$B05_IDADE <- cut(banco_dengue_tr$B05_IDADE, breaks = limites_cla
 #Definindo banco com a variável que vamos utilizar 
 
 banco_dengue <- banco_dengue_tr %>% 
-  select(B05_IDADE,B04_SEXO,D13_FEBRE_VACINA,`Cor/Raça`,F03_D_G_VALOR_C) 
+  select(B05_IDADE,B04_SEXO,D13_FEBRE_VACINA,`Cor/Raça`, DENGUE_PRNT20) %>% 
+  filter(DENGUE_PRNT20 == 'POS')
+  
+# Mudando o nome da variável POS para Positivo
 
+banco_dengue$DENGUE_PRNT20 <- factor(banco_dengue$DENGUE_PRNT20,
+                          levels = c('POS'),
+                          labels = c('Positivo')
+)   
 
-banco_dengue$F03_D_G_VALOR_C <- as.factor(banco_dengue$F03_D_G_VALOR_C)
-banco_dengue$B05_IDADE <- as.factor(banco_dengue$B05_IDADE)
-banco_dengue$B04_SEXO <- as.factor(banco_dengue$B04_SEXO)
-banco_dengue$D13_FEBRE_VACINA <- as.factor(banco_dengue$D13_FEBRE_VACINA)
-banco_dengue$`Cor/Raça` <- as.factor(banco_dengue$`Cor/Raça`)
+#Alterando o nome das Colunas
 
-colnames(banco_dengue)  <- c("idade","sexo","Vacina","Cor", "Teste Rápido Dengue")
+colnames(banco_dengue)  <- c("idade","sexo","vacina","cor", "Dengue PRNT")
 
 
 #Gráficos
 
 caminho_dengue <- "C:/Users/Cliente/Desktop/Projetos - ESTAT/pf23025-GEANI/resultados/Lucas/Pacote Dengue"
 
-#Idade
+#idade
 
-bancoteste <- banco_dengue %>% 
-  select(Vacina,`Teste Rápido Dengue`)
-
-sum(is.na(banco_dengue$`Teste Rápido Dengue`))
-sum(is.na(banco_dengue$Cor))
-
+sum(is.na(banco_dengue$idade))
 
 idade_dengue <- banco_dengue %>%
-  select(idade, `Teste Rápido Dengue`) %>% 
-  filter(!is.na(idade), !is.na(`Teste Rápido Dengue`)) %>% 
-  group_by(idade, `Teste Rápido Dengue`) %>%
-  summarise(freq = n()) %>%
-  mutate(freq_relativa = freq %>% percent())
-
-porcentagens <- str_c(idade_dengue$freq_relativa, "%") %>% str_replace("\\.", ",")
-
-legendas <- str_squish(str_c(idade_dengue$freq, " (", porcentagens, ")"))
+  filter(!is.na(idade)) %>%
+  count(idade) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
 
 ggplot(idade_dengue) +
   aes(
     x = idade,
-    y = freq,
-    fill = `Teste Rápido Dengue` ,
-    label = legendas
+    y = n,
+    label = label
   ) +
-  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
-    vjust = -0.5, #hjust = .5,
-    size = 2
+    vjust = -0.5, # hjust = .5,
+    size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000)) +
+  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
   labs(x = "Grupo Etário (Anos Completos)", y = "Frequência") +
   theme_estat()
-
 
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-idade-dengue.pdf"), width = 158, height = 93, units = "mm")
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-idade-dengue.png"), width = 158, height = 93, units = "mm")
 
 #Sexo
+sum(is.na(banco_dengue$sexo))
 
 sexo_dengue <- banco_dengue %>%
-  select(sexo, `Teste Rápido Dengue`) %>% 
-  filter(!is.na(sexo), !is.na(`Teste Rápido Dengue`)) %>% 
-  group_by(sexo, `Teste Rápido Dengue`) %>%
-  summarise(freq = n()) %>%
-  mutate(freq_relativa = freq %>% percent())
-
-porcentagens <- str_c(sexo_dengue$freq_relativa, "%") %>% str_replace("\\.", ",")
-legendas <- str_squish(str_c(sexo_dengue$freq, " (", porcentagens, ")"))
+  filter(!is.na(sexo)) %>%
+  count(sexo) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
 
 ggplot(sexo_dengue) +
   aes(
-    x = fct_reorder(sexo, freq, .desc = T),
-    y = freq,
-    fill = `Teste Rápido Dengue`,
-    label = legendas
+    x = fct_reorder(sexo, n, .desc = T),
+    y = n,
+    label = label
   ) +
-  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
-    vjust = -0.5, #hjust = .5,
+    vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000)) +
+  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
   labs(x = "Sexo", y = "Frequência") +
   theme_estat()
+
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-sexo-dengue.pdf"), width = 158, height = 93, units = "mm")
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-sexo-dengue.png"), width = 158, height = 93, units = "mm")
 
+#Vacina
+
+sum(is.na(banco_dengue$vacina))
 
 
-#Vacina 
 vacina_dengue <- banco_dengue %>%
-  select(Vacina, `Teste Rápido Dengue`) %>% 
-  filter(!is.na(Vacina), !is.na(`Teste Rápido Dengue`)) %>% 
-  group_by(Vacina, `Teste Rápido Dengue`) %>%
-  summarise(freq = n()) %>%
-  mutate(freq_relativa = freq %>% percent())
-
-porcentagens <- str_c(vacina_dengue$freq_relativa, "%") %>% str_replace("\\.", ",")
-legendas <- str_squish(str_c(vacina_dengue$freq, " (", porcentagens, ")"))
+  filter(!is.na(vacina)) %>%
+  count(vacina) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
 
 ggplot(vacina_dengue) +
   aes(
-    x = fct_reorder(Vacina, freq, .desc = T),
-    y = freq,
-    fill = `Teste Rápido Dengue`,
-    label = legendas
+    x = fct_reorder(vacina, n, .desc = T),
+    y = n,
+    label = label
   ) +
-  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
-    vjust = -0.5, #hjust = .5,
+    vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000)) +
+  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
   labs(x = "Vacina Prévia Contra Febre Amarela", y = "Frequência") +
   theme_estat()
+
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-vacina-dengue.pdf"), width = 158, height = 93, units = "mm")
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-vacina-dengue.png"), width = 158, height = 93, units = "mm")
 
 
-#Cor
+#Cor 
+sum(is.na(banco_dengue$cor))
+
 
 cor_dengue <- banco_dengue %>%
-  select(Cor, `Teste Rápido Dengue`) %>% 
-  filter(!is.na(Cor), !is.na(`Teste Rápido Dengue`)) %>% 
-  group_by(Cor, `Teste Rápido Dengue`) %>%
-  summarise(freq = n()) %>%
-  mutate(freq_relativa = freq %>% percent())
-
-porcentagens <- str_c(cor_dengue$freq_relativa, "%") %>% str_replace("\\.", ",")
-legendas <- str_squish(str_c(cor_dengue$freq, " (", porcentagens, ")"))
+  filter(!is.na(cor)) %>%
+  count(cor) %>%
+  mutate(
+    freq = n %>% percent(),
+  ) %>%
+  mutate(
+    freq = gsub("\\.", ",", freq) %>% paste("%", sep = ""),
+    label = str_c(n, " (", freq, ")") %>% str_squish()
+  )
 
 ggplot(cor_dengue) +
   aes(
-    x = fct_reorder(Cor, freq, .desc = T),
-    y = freq,
-    fill = `Teste Rápido Dengue`,
-    label = legendas
+    x = fct_reorder(cor, n, .desc = T),
+    y = n,
+    label = label
   ) +
-  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
   geom_text(
     position = position_dodge(width = .9),
-    vjust = -0.5, #hjust = .5,
+    vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000)) +
-  labs(x = "Raça/Cor", y = "Frequência") +
+  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
+  labs(x = "Cor/Raça", y = "Frequência") +
   theme_estat()
+
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-cor-dengue.pdf"), width = 158, height = 93, units = "mm")
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-cor-dengue.png"), width = 158, height = 93, units = "mm")
-
