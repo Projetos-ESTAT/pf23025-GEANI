@@ -253,19 +253,13 @@ banco_dengue_tr$B05_IDADE <- cut(banco_dengue_tr$B05_IDADE, breaks = limites_cla
 #Definindo banco com a variável que vamos utilizar 
 
 banco_dengue <- banco_dengue_tr %>% 
-  select(B05_IDADE,B04_SEXO,D13_FEBRE_VACINA,`Cor/Raça`, DENGUE_PRNT20) %>% 
-  filter(DENGUE_PRNT20 == 'POS')
+  select(B05_IDADE,B04_SEXO,D13_FEBRE_VACINA,`Cor/Raça`, F03_D_G_VALOR_C) %>% 
+  filter(F03_D_G_VALOR_C == 'Reagente')
   
-# Mudando o nome da variável POS para Positivo
-
-banco_dengue$DENGUE_PRNT20 <- factor(banco_dengue$DENGUE_PRNT20,
-                          levels = c('POS'),
-                          labels = c('Positivo')
-)   
 
 #Alterando o nome das Colunas
 
-colnames(banco_dengue)  <- c("idade","sexo","vacina","cor", "Dengue PRNT")
+colnames(banco_dengue)  <- c("idade","sexo","vacina","cor", "Dengue Teste Rápido")
 
 
 #Gráficos
@@ -299,7 +293,7 @@ ggplot(idade_dengue) +
     vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
+  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000))+
   labs(x = "Grupo Etário (Anos Completos)", y = "Frequência") +
   theme_estat()
 
@@ -332,7 +326,7 @@ ggplot(sexo_dengue) +
     vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
+  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000))+
   labs(x = "Sexo", y = "Frequência") +
   theme_estat()
 
@@ -367,8 +361,8 @@ ggplot(vacina_dengue) +
     vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
-  labs(x = "Vacina Prévia Contra Febre Amarela", y = "Frequência") +
+  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000))+
+  labs(x = "Vacinação", y = "Frequência") +
   theme_estat()
 
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-vacina-dengue.pdf"), width = 158, height = 93, units = "mm")
@@ -402,8 +396,8 @@ ggplot(cor_dengue) +
     vjust = -0.5, # hjust = .5,
     size = 3
   ) +
-  scale_y_continuous(breaks = seq(from = 0, to = 500, by = 100), limits=c(0, 500))+
-  labs(x = "Cor/Raça", y = "Frequência") +
+  scale_y_continuous(breaks = seq(from = 0, to = 1000, by = 200), limits=c(0, 1000))+
+  labs(x = "Raça/Cor", y = "Frequência") +
   theme_estat()
 
 ggsave(filename = file.path(caminho_dengue,"colunas-bi-freq-cor-dengue.pdf"), width = 158, height = 93, units = "mm")
