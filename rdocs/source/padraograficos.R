@@ -68,7 +68,7 @@ ggsave("colunas-bi-freq.pdf", width = 158, height = 93, units = "mm")
 ## >> 1.2 Barras com duas frequências ====
 ### >>> 1.2.1 Univariado ====
 
-ggplot(classes) +
+ggplot(class) +
   aes(
     x = fct_reorder(class, n, .desc = T),
     y = n,
