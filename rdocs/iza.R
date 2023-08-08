@@ -63,6 +63,7 @@ theme_estat <- function(...) {
   )
 }
 
+
 ###Salvando graficos
 caminho_chik <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/resultados/iza/Pacote chikungunya"
 
@@ -204,3 +205,176 @@ ggplot(vacina_chik) +
 ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-vacchik.pdf"), width = 158, height = 93, units = "mm")
 
 
+######Análise exploratória part2###########
+##Caminho 
+caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/resultados/iza/Zika TR"
+
+###criando banco da zika
+banco_zika <- sangue %>% 
+  dplyr:: select(B05_IDADE, B04_SEXO, B06_COR, D13_FEBRE_VACINA, F07_Z_G_VALOR_C)
+colnames(banco_zika)  <- c("idade","sexo","Cor","vacina", "Zika")
+
+###tirando os NAs
+bancozik <- na.omit(banco_zika)
+
+##Sexo
+sex_zik <- bancozik %>%
+  mutate(sexo = case_when(
+    sexo %>% str_detect("Feminino") ~ "Feminino",
+    sexo %>% str_detect("Masculino") ~ "Masculino"
+  )) %>%
+  group_by(sexo, Zika) %>%
+  summarise(freq = n()) %>%
+  mutate(
+    freq_relativa = round(freq/sum(freq)*100,2)
+  )
+porcentagens <- str_c(sex_zik$freq_relativa, "%") %>% str_replace("\\.", ",")
+
+legendas <- str_squish(str_c(sex_zik$freq, " (", porcentagens, ")"))
+
+ggplot(sex_zik) +
+  aes(
+    x = fct_reorder(sexo, freq, .desc = T), y = freq,
+    fill = Zika, label = legendas
+  ) +
+  geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+  geom_text(
+    position = position_dodge(width = .9),
+    vjust = -0.5, hjust = 0.5,
+    size = 3
+  ) +
+  scale_y_continuous(breaks = seq(from = 0, to = 650, by = 100), limits=c(0, 650)) +
+  labs(x = "Sexo", y = "Frequência") +
+  theme_estat()
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-sexzik.pdf"), width = 158, height = 93, units = "mm")
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-sexzik.png"), width = 158, height = 93, units = "mm")
+
+###Vacinação 
+ vac_zik <- bancozik %>%
+   group_by(vacina, Zika) %>%
+   summarise(freq = n()) %>%
+   mutate(
+     freq_relativa = round(freq/sum(freq)*100,2)
+   )
+ porcentagens <- str_c(vac_zik$freq_relativa, "%") %>% str_replace("\\.", ",")
+ 
+ legendas <- str_squish(str_c(vac_zik$freq, " (", porcentagens, ")"))
+ 
+ ggplot(vac_zik) +
+   aes(
+     x = fct_reorder(vacina, freq, .desc = T), y = freq,
+     fill = Zika, label = legendas
+   ) +
+   geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+   geom_text(
+     position = position_dodge(width = .9),
+     vjust = -0.5, hjust = 0.5,
+     size = 3
+   ) +
+   scale_y_continuous(breaks = seq(from = 0, to = 600, by = 100), limits=c(0, 600)) +
+   labs(x = "Vacinação", y = "Frequência") +
+   theme_estat()
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-vaczik.pdf"), width = 158, height = 93, units = "mm")
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-vaczik.png"), width = 158, height = 93, units = "mm")
+ 
+ 
+###Cor 
+ ##Puxando o banco e tirando as NAs
+ #---------------Criando objeto com as variáveis que vamos trabalhar---------
+ 
+ #Pegar cor raça do Plano rds(pq no banco dela está branco e não branco e ela quer negro e não negro)
+ 
+ cor<-data.frame(plano[["variables"]][["b06_cor"]], plano[["variables"]][["CHIK_PRNT20"]])
+ 
+ colnames(cor)[1] <- "Cor/Raça"
+ colnames(cor)[2] <- "Chikungunya"
+ 
+ #Mundando o campo cor para Não negros: brancos e amarelos ; Negros: pretos, pardos, indigenas
+ 
+ cor$`Cor/Raça` <- ifelse(
+   cor$`Cor/Raça` %in% c("Branca", "Amarela"),
+   "Não negros",
+   "Negros"
+ )
+ 
+ #Criando um objeto com as variaveis idade, sexo, cor, vacina, teste rapido dengue 
+ banco_dengue_tr <- sangue %>% 
+   dplyr:: select(B05_IDADE, 
+                  B04_SEXO, 
+                  D13_FEBRE_VACINA,
+                  F07_Z_G_VALOR_C
+   )
+ 
+ #Junta os bandos um do lado do outro
+ banco_z <- bind_cols(banco_dengue_tr, cor)
+colnames(banco_z) <- c("idade", "sexo", "Vacina", "Zika", "Cor", "Chik")
+banco_z <- na.omit(banco_z)
+ 
+##Gráfico
+ raça_cor <- banco_z %>%
+   group_by(Cor, Zika) %>%
+   summarise(freq = n()) %>%
+   mutate(
+     freq_relativa = round(freq/sum(freq)*100,2)
+   )
+ porcentagens <- str_c(raça_cor$freq_relativa, "%") %>% str_replace("\\.", ",")
+ 
+ legendas <- str_squish(str_c(raça_cor$freq, " (", porcentagens, ")"))
+ 
+ ggplot(raça_cor) +
+   aes(
+     x = fct_reorder(Cor, freq, .desc = T), y = freq,
+     fill = Zika, label = legendas
+   ) +
+   geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+   geom_text(
+     position = position_dodge(width = .9),
+     vjust = -0.5, hjust = 0.5,
+     size = 3
+   ) +
+   scale_y_continuous(breaks = seq(from = 0, to = 450, by = 100), limits=c(0, 450)) +
+   labs(x = "Raça/cor", y = "Frequência") +
+   theme_estat()
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-corzik.pdf"), width = 158, height = 93, units = "mm")
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-corzik.png"), width = 158, height = 93, units = "mm")
+ 
+##Idade
+ #Definindo os limites das classes
+ limites_classes_idades <- c(0,11,18,29,59,Inf)
+ 
+ #agrupar as idades nas classes
+ bancozik$idade <- cut(bancozik$idade, breaks = limites_classes_idades, labels = c("0-11", "12-18", "19-29", "30-59", ">=60"))
+ 
+ #Gráfico
+bancozik <- na.omit(bancozik)
+
+ idade <- bancozik %>%
+   group_by(idade, Zika) %>%
+   summarise(freq = n()) %>%
+   mutate(
+     freq_relativa = round(freq/sum(freq)*100,2)
+   )
+ porcentagens <- str_c(idade$freq_relativa, "%") %>% str_replace("\\.", ",")
+ 
+ legendas <- str_squish(str_c(idade$freq, " (", porcentagens, ")"))
+ 
+ ggplot(idade) +
+   aes(
+     x = idade, y = freq,
+     fill = Zika, label = legendas
+   ) +
+   geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
+   geom_text(
+     position = position_dodge(width = .9),
+     vjust = -0.5, hjust = 0.5,
+     size = 2.2
+   ) +
+   scale_y_continuous(breaks = seq(from = 0, to = 510, by = 100), limits=c(0, 510)) +
+   labs(x = "Idade", y = "Frequência") +
+   theme_estat()
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-idadezik.pdf"), width = 158, height = 93, units = "mm")
+ ggsave(filename = file.path(caminho_zika,"colunas-bi-freq-idadezik.png"), width = 158, height = 93, units = "mm")
+ 
+ 
+
+ 
