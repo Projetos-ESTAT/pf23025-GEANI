@@ -23,7 +23,7 @@ source("rdocs/source/packages.R")
 # as funções dos pacotes contidos no Tidyverse para realizar suas análises.
 # ---------------------------------------------------------------------------- #
 
-pacman::p_load(dplyr, DescTools)
+pacman::p_load(dplyr, DescTools, survey)
 
 #### importando os bancos de dados ####
 
@@ -214,6 +214,649 @@ svy_bgadjust(
 # RVP = 4
 # RVN = 0,11
 
+# -------------------------------- Parte 2 ----------------------------------- #
+
+#### função para prevalêcia / proporção ####
+test <- function(n,total,doença) {
+  freq <- n/total
+  if (doença %in% c("dengue", "d", "Dengue", "D")) {
+    sens <- 0.8099269 
+    espec <- 0.6666953
+  } else {
+    sens <- 0.9152719 
+    espec <- 0.7709884
+  }
+  prev_ajust <- (freq+espec-1)/(sens+espec-1)
+  z <- 1.96
+  erro_prev <- z*sqrt(prev_ajust*(1-prev_ajust)/total)
+  inf_prev <- prev_ajust - erro_prev
+  sup_prev <- prev_ajust + erro_prev
+  erro_prop <- z*sqrt(freq*(1-freq)/total)
+  inf_prop <- freq - erro_prop
+  sup_prop <- freq + erro_prop
+  return(list(
+    prev_ajust = prev_ajust,
+    prev_intervalo = paste("intervalo de conf da prevalência:", inf_prev, ";", sup_prev)#,
+    #propoção = freq,
+    #prop_intervalo = paste("intervalo de conf da proporção:", inf_prop, ";", sup_prop)
+  ))
+}
+
+## Manipulação necessária para raça/cor
+plano <- plano %>% 
+  mutate(plano$variables,
+         DENGUE_PRNT20 = case_when(
+           DENGUE1_PRNT20 == "POS" | 
+             DENGUE2_PRNT20 == "POS" | 
+             DENGUE3_PRNT20 == "POS" ~ "POS", 
+           DENGUE1_PRNT20 %in% c("NEG", NA) & 
+             DENGUE2_PRNT20 %in% c("NEG", NA) & 
+             DENGUE3_PRNT20 %in% c("NEG", NA, "/") ~ "NEG") %>% 
+           as.factor(),
+         DENGUE_PRNT20_2 = case_when(
+           DENGUE1_PRNT20 == "POS" | 
+             DENGUE2_PRNT20 == "POS" | 
+             DENGUE3_PRNT20 == "POS" ~ "POS", 
+           DENGUE1_PRNT20 == "NEG" & 
+             DENGUE2_PRNT20 == "NEG" & 
+             DENGUE3_PRNT20 == "NEG" ~ "NEG",
+           TRUE ~ "IND")%>% 
+           as.factor(),
+         ZIK_PRNT20_2 = case_when(
+           ZIK_PRNT20 == "POS" ~ "POS", 
+           ZIK_PRNT20 %in% c("NEG", NA) ~ "NEG"),
+         ZIK_PRNT20_3 = case_when(
+           ZIK_PRNT20 == "POS" ~ "POS", 
+           ZIK_PRNT20 == "NEG" ~ "NEG",
+           is.na(ZIK_PRNT20) ~ "IND"),
+         F03_D_G_VALOR_C = case_when(
+           between(f03_d_g_valor, -Inf,18)~"Não reagente",
+           between(f03_d_g_valor, 22, Inf)~"Reagente"),
+         F07_Z_G_VALOR_C = case_when(
+           between(f07_z_g_valor, -Inf, 22) ~ "Não reagente", 
+           between(f07_z_g_valor, 28, Inf) ~ "Reagente"),
+         F11_C_G_VALOR_C = case_when(
+           between(f11_c_g_valor, -Inf,16)~"Não reagente",
+           between(f11_c_g_valor, 20, Inf)~"Reagente"))
+
+
+###############################     DENGUE     ###############################
+
+#### geral ####
+
+# n
+table(bancoAdj$variables$F03_D_G_VALOR_C)
+
+# N
+svytable(~F03_D_G_VALOR_C, bancoAdj, round=TRUE)
+svytotal(~F03_D_G_VALOR_C, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+test(1587,2108,"d")
+
+
+#### sexos
+
+# n
+table(bancoAdj$variables$F03_D_G_VALOR_C,bancoAdj$variables$B04_SEXO)
+
+# N 
+svytable(~F03_D_G_VALOR_C+B04_SEXO, bancoAdj, round=TRUE)
+svytotal(~interaction(F03_D_G_VALOR_C, B04_SEXO),design=bancoAdj,na.rm=T)
+
+## criando variaveis
+bancoAdj$variables$Dengue_fem<-NA
+bancoAdj$variables$Dengue_fem[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                bancoAdj$variables$B04_SEXO== "Feminino"]<-"positivo_f"
+bancoAdj$variables$Dengue_fem[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                bancoAdj$variables$B04_SEXO== "Feminino"]<-"negativo_f"
+bancoAdj$variables$Dengue_masc<-NA
+bancoAdj$variables$Dengue_masc[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                 bancoAdj$variables$B04_SEXO== "Masculino"] <-"positivo_m"
+bancoAdj$variables$Dengue_masc[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                 bancoAdj$variables$B04_SEXO== "Masculino"] <-"negativo_m"
+table(bancoAdj$variables$Dengue_fem)
+table(bancoAdj$variables$Dengue_masc)
+
+
+#### feminino ####
+
+# n
+table(bancoAdj$variables$Dengue_fem)
+
+# N
+svytable(~Dengue_fem, bancoAdj, round=TRUE)
+svytotal(~Dengue_fem, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(934,2108,"d")
+#test(934,1587,"d")
+test(934,1256,"d")
+
+#### masculino ####
+
+# n
+table(bancoAdj$variables$Dengue_masc)
+
+# N
+svytable(~Dengue_masc, bancoAdj, round=TRUE)
+svytotal(~Dengue_masc, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(653,2108,"d")
+#test(653,1587,"d")
+test(653,852,"d")
+
+#### faixas etárias
+
+## criando faixas 
+bancoAdj <- mutate(bancoAdj,
+                   c_idade = cut(B05_IDADE, c(0,11,18,29,59,120), include.lowest = TRUE))
+
+
+# n
+table(bancoAdj$variables$c_idade,bancoAdj$variables$F03_D_G_VALOR_C)
+
+# N 
+svytable(~F03_D_G_VALOR_C+c_idade, bancoAdj, round=TRUE)
+svytotal(~interaction(F03_D_G_VALOR_C,c_idade), design=bancoAdj, na.rm=T)
+
+
+## criando variaveis
+
+table(bancoAdj$variables$c_idade,bancoAdj$variables$F03_D_G_VALOR_C)
+
+bancoAdj$variables$D_idade0a11<-NA
+bancoAdj$variables$D_idade0a11[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                 bancoAdj$variables$c_idade== "[0,11]"]<-"positivo_0a11"
+bancoAdj$variables$D_idade0a11[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                 bancoAdj$variables$c_idade== "[0,11]"]<-"negativo_0a11"
+bancoAdj$variables$D_idade12a18<-NA
+bancoAdj$variables$D_idade12a18[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(11,18]"]<-"positivo_12a18"
+bancoAdj$variables$D_idade12a18[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(11,18]"]<-"negativo_12a18"
+bancoAdj$variables$D_idade19a29<-NA
+bancoAdj$variables$D_idade19a29[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(18,29]"]<-"positivo_19a29"
+bancoAdj$variables$D_idade19a29[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(18,29]"]<-"negativo_19a29"
+bancoAdj$variables$D_idade30a59<-NA
+bancoAdj$variables$D_idade30a59[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(29,59]"]<-"positivo_30a59"
+bancoAdj$variables$D_idade30a59[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(29,59]"]<-"negativo_30a59"
+bancoAdj$variables$D_idade60<-NA
+bancoAdj$variables$D_idade60[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                               bancoAdj$variables$c_idade== "(59,120]"]<-"positivo_60"
+bancoAdj$variables$D_idade60[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                               bancoAdj$variables$c_idade== "(59,120]"]<-"negativo_60"
+
+
+## verificando
+table(bancoAdj$variables$c_idade,bancoAdj$variables$F03_D_G_VALOR_C)
+table(bancoAdj$variables$D_idade0a11)
+table(bancoAdj$variables$D_idade12a18)
+table(bancoAdj$variables$D_idade19a29)
+table(bancoAdj$variables$D_idade30a59)
+table(bancoAdj$variables$D_idade60)
+
+####  0 a 11  ####
+
+# n
+table(bancoAdj$variables$D_idade0a11)
+
+# N
+svytable(~D_idade0a11, bancoAdj, round=TRUE)
+svytotal(~D_idade0a11, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(57,2108,"d")
+#test(57,1587,"d")
+test(57,127,"d")
+
+
+####  12 a 18  ####
+
+# n
+table(bancoAdj$variables$D_idade12a18)
+
+# N
+svytable(~D_idade12a18, bancoAdj, round=TRUE)
+svytotal(~D_idade12a18, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(97,2108,"d")
+#test(97,1587,"d")
+test(97,161,"d")
+
+####  19 a 29  ####
+
+# n
+table(bancoAdj$variables$D_idade19a29)
+
+# N
+svytable(~D_idade19a29, bancoAdj, round=TRUE)
+svytotal(~D_idade19a29, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(201,2108,"d")
+#test(201,1587,"d")
+test(201,258,"d")
+
+####  30 a 59  ####
+
+# n
+table(bancoAdj$variables$D_idade30a59)
+
+# N
+svytable(~D_idade30a59, bancoAdj, round=TRUE)
+svytotal(~D_idade30a59, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(765,2108,"d")
+#test(765,1587,"d")
+test(765,960,"d")
+
+####  60+  ####
+
+# n
+table(bancoAdj$variables$D_idade60)
+
+# N
+svytable(~D_idade60, bancoAdj, round=TRUE)
+svytotal(~D_idade60, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(467,2108,"d")
+#test(467,1587,"d")
+test(467,602,"d")
+
+
+### Raça/cor
+
+# criando raça/cor
+
+table(plano$variables$b06_cor)
+
+plano$variables$raca_cor <-"Não negro"
+plano$variables$raca_cor[plano$variables$b06_cor=="Preta"| plano$variables$b06_cor=="Indígena"|
+                           plano$variables$b06_cor=="Parda (mulata, cabocla, cafuza, mameluca ou mestiça)"]<-"Negro"
+
+table(plano$variables$b06_cor,plano$variables$raca_cor)
+
+# criando variáveis
+table(plano$variables$raca_cor,plano$variables$F03_D_G_VALOR_C)
+
+plano$variables$D_negro<-NA
+plano$variables$D_negro[plano$variables$F03_D_G_VALOR_C=="Reagente"& 
+                          plano$variables$raca_cor== "Negro"]<-"pos_negro"
+plano$variables$D_negro[plano$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                          plano$variables$raca_cor== "Negro"]<-"neg_negro"
+plano$variables$D_nnegro<-NA
+plano$variables$D_nnegro[plano$variables$F03_D_G_VALOR_C=="Reagente"& 
+                           plano$variables$raca_cor== "Não negro"] <-"pos_nn"
+plano$variables$D_nnegro[plano$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                           plano$variables$raca_cor== "Não negro"] <-"neg_nn"
+table(plano$variables$raca_cor,plano$variables$F03_D_G_VALOR_C)
+table(plano$variables$D_negro)
+table(plano$variables$D_nnegro)
+
+####  negro  ####
+
+# n
+table(plano$variables$D_negro)
+
+# N
+svytable(~D_negro, plano, round=TRUE)
+svytotal(~D_negro, design=plano, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(921,2108,"d")
+#test(921,1587,"d")
+test(921,1194,"d")
+
+####  não negro  ####
+
+# n
+table(plano$variables$D_nnegro)
+
+# N
+svytable(~D_nnegro, plano, round=TRUE)
+svytotal(~D_nnegro, design=plano, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(666,2108,"d")
+#test(666,1587,"d")
+test(666,914,"d")
+
+### vacina febre amarela
+
+# criando variaveis
+table(bancoAdj$variables$F03_D_G_VALOR_C,bancoAdj$variables$D13_FEBRE_VACINA)
+
+bancoAdj$variables$D_tomou<-NA
+bancoAdj$variables$D_tomou[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                             bancoAdj$variables$D13_FEBRE_VACINA== "Sim"]<-"pos_tomou"
+bancoAdj$variables$D_tomou[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                             bancoAdj$variables$D13_FEBRE_VACINA== "Sim"]<-"neg_tomou"
+bancoAdj$variables$D_ntomou<-NA
+bancoAdj$variables$D_ntomou[bancoAdj$variables$F03_D_G_VALOR_C=="Reagente"& 
+                              bancoAdj$variables$D13_FEBRE_VACINA== "Não"] <-"pos_ntomou"
+bancoAdj$variables$D_ntomou[bancoAdj$variables$F03_D_G_VALOR_C=="Não reagente"& 
+                              bancoAdj$variables$D13_FEBRE_VACINA== "Não"] <-"neg_ntomou"
+table(bancoAdj$variables$D13_FEBRE_VACINA,bancoAdj$variables$F03_D_G_VALOR_C)
+table(bancoAdj$variables$D_tomou)
+table(bancoAdj$variables$D_ntomou)
+
+#### tomou a vacina ####
+
+# n
+table(bancoAdj$variables$D_tomou)
+
+# N
+svytable(~D_tomou, bancoAdj, round=TRUE)
+svytotal(~D_tomou, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(868,2108,"d")
+#test(868,1564,"d")
+test(868,1181,"d")
+
+#### n tomou a vacina ####
+
+# n
+table(bancoAdj$variables$D_ntomou)
+
+# N
+svytable(~D_ntomou, bancoAdj, round=TRUE)
+svytotal(~D_ntomou, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(696,2108,"d")
+#test(696,1564,"d")
+test(696,893,"d")
+
+
+##############################     ZIKA     ##################################
+
+
+#### geral ####
+
+# n
+table(bancoAdj$variables$F07_Z_G_VALOR_C)
+
+# N
+svytable(~F07_Z_G_VALOR_C, bancoAdj, round=TRUE)
+svytotal(~F07_Z_G_VALOR_C, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+test(1072,2084,"z")
+
+
+#### sexos
+
+# n
+table(bancoAdj$variables$F07_Z_G_VALOR_C,bancoAdj$variables$B04_SEXO)
+
+# N 
+svytable(~F07_Z_G_VALOR_C+B04_SEXO, bancoAdj, round=TRUE)
+svytotal(~interaction(F07_Z_G_VALOR_C,B04_SEXO), design=bancoAdj, na.rm=T)
+
+# criando variaveis
+bancoAdj$variables$Zika_fem<-NA
+bancoAdj$variables$Zika_fem[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                              bancoAdj$variables$B04_SEXO== "Feminino"]<-"positivo_f"
+bancoAdj$variables$Zika_fem[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                              bancoAdj$variables$B04_SEXO== "Feminino"]<-"negativo_f"
+bancoAdj$variables$Zika_masc<-NA
+bancoAdj$variables$Zika_masc[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                               bancoAdj$variables$B04_SEXO== "Masculino"] <-"positivo_m"
+bancoAdj$variables$Zika_masc[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                               bancoAdj$variables$B04_SEXO== "Masculino"] <-"negativo_m"
+table(bancoAdj$variables$Zika_fem)
+table(bancoAdj$variables$Zika_masc)
+
+
+#### feminino ####
+
+# n
+table(bancoAdj$variables$Zika_fem)
+
+# N
+svytable(~Zika_fem, bancoAdj, round=TRUE)
+svytotal(~Zika_fem, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(625,2084,"z")
+#test(625,1072,"z")
+test(625,1239,"z")
+
+#### masculino ####
+
+# n
+table(bancoAdj$variables$Zika_masc)
+
+# N
+svytable(~Zika_masc, bancoAdj, round=TRUE)
+svytotal(~Zika_masc, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(447,2084,"z")
+#test(447,1072,"z")
+test(447,845,"z")
+
+#### faixas etárias
+
+# n
+table(bancoAdj$variables$F07_Z_G_VALOR_C,bancoAdj$variables$c_idade)
+
+# N 
+svytable(~F07_Z_G_VALOR_C+c_idade, bancoAdj, round=TRUE)
+svytotal(~interaction(F07_Z_G_VALOR_C,c_idade), design=bancoAdj, na.rm=T)
+
+
+## criando variaveis
+
+table(bancoAdj$variables$c_idade,bancoAdj$variables$F07_Z_G_VALOR_C)
+
+bancoAdj$variables$Z_idade0a11<-NA
+bancoAdj$variables$Z_idade0a11[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                                 bancoAdj$variables$c_idade== "[0,11]"]<-"positivo_0a11"
+bancoAdj$variables$Z_idade0a11[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                                 bancoAdj$variables$c_idade== "[0,11]"]<-"negativo_0a11"
+bancoAdj$variables$Z_idade12a18<-NA
+bancoAdj$variables$Z_idade12a18[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(11,18]"]<-"positivo_12a18"
+bancoAdj$variables$Z_idade12a18[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(11,18]"]<-"negativo_12a18"
+bancoAdj$variables$Z_idade19a29<-NA
+bancoAdj$variables$Z_idade19a29[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(18,29]"]<-"positivo_19a29"
+bancoAdj$variables$Z_idade19a29[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(18,29]"]<-"negativo_19a29"
+bancoAdj$variables$Z_idade30a59<-NA
+bancoAdj$variables$Z_idade30a59[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                                  bancoAdj$variables$c_idade== "(29,59]"]<-"positivo_30a59"
+bancoAdj$variables$Z_idade30a59[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                                  bancoAdj$variables$c_idade== "(29,59]"]<-"negativo_30a59"
+bancoAdj$variables$Z_idade60<-NA
+bancoAdj$variables$Z_idade60[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                               bancoAdj$variables$c_idade== "(59,120]"]<-"positivo_60"
+bancoAdj$variables$Z_idade60[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                               bancoAdj$variables$c_idade== "(59,120]"]<-"negativo_60"
+
+## verificando
+table(bancoAdj$variables$c_idade,bancoAdj$variables$F07_Z_G_VALOR_C)
+table(bancoAdj$variables$Z_idade0a11)
+table(bancoAdj$variables$Z_idade12a18)
+table(bancoAdj$variables$Z_idade19a29)
+table(bancoAdj$variables$Z_idade30a59)
+table(bancoAdj$variables$Z_idade60)
+
+####  0 a 11  ####
+
+# n
+table(bancoAdj$variables$Z_idade0a11)
+
+# N
+svytable(~Z_idade0a11, bancoAdj, round=TRUE)
+svytotal(~Z_idade0a11, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(33,2084,"z")
+#test(33,1072,"z")
+test(33,128,"z")
+
+####  12 a 18  ####
+
+# n
+table(bancoAdj$variables$Z_idade12a18)
+
+# N
+svytable(~Z_idade12a18, bancoAdj, round=TRUE)
+svytotal(~Z_idade12a18, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(61,2084,"z")
+#test(61,1072,"z")
+test(61,161,"z")
+
+####  19 a 29  ####
+
+# n
+table(bancoAdj$variables$Z_idade19a29)
+
+# N
+svytable(~Z_idade19a29, bancoAdj, round=TRUE)
+svytotal(~Z_idade19a29, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(140,2084,"z")
+#test(140,1072,"z")
+test(140,255,"z")
+
+####  30 a 59  ####
+
+# n
+table(bancoAdj$variables$Z_idade30a59)
+
+# N
+svytable(~Z_idade30a59, bancoAdj, round=TRUE)
+svytotal(~Z_idade30a59, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(512,2084,"z")
+#test(512,1072,"z")
+test(512,948,"z")
+
+####  60+  ####
+
+# n
+table(bancoAdj$variables$Z_idade60)
+
+# N
+svytable(~Z_idade60, bancoAdj, round=TRUE)
+svytotal(~Z_idade60, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(326,2084,"z")
+#test(326,1072,"z")
+test(326,592,"z")
+
+#### Raça/cor
+
+# criando variáveis
+table(plano$variables$raca_cor,plano$variables$F07_Z_G_VALOR_C)
+
+plano$variables$Z_negro<-NA
+plano$variables$Z_negro[plano$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                          plano$variables$raca_cor== "Negro"]<-"pos_negro"
+plano$variables$Z_negro[plano$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                          plano$variables$raca_cor== "Negro"]<-"neg_negro"
+plano$variables$Z_nnegro<-NA
+plano$variables$Z_nnegro[plano$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                           plano$variables$raca_cor== "Não negro"] <-"pos_nn"
+plano$variables$Z_nnegro[plano$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                           plano$variables$raca_cor== "Não negro"] <-"neg_nn"
+table(plano$variables$raca_cor,plano$variables$F07_Z_G_VALOR_C)
+table(plano$variables$Z_negro)
+table(plano$variables$Z_nnegro)
+
+####  negro  ####
+
+# n
+table(plano$variables$Z_negro)
+
+# N
+svytable(~Z_negro, plano, round=TRUE)
+svytotal(~Z_negro, design=plano, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(654,2084,"z")
+#test(654,1072,"z")
+test(654,1179,"z")
+
+####  não negro  ####
+
+# n
+table(plano$variables$Z_nnegro)
+
+# N
+svytable(~Z_nnegro, plano, round=TRUE)
+svytotal(~Z_nnegro, design=plano, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(418,2084,"z")
+#test(418,1072,"z")
+test(418,905,"z")
+
+### vacina febre amarela
+
+# criando variaveis
+table(bancoAdj$variables$F07_Z_G_VALOR_C,bancoAdj$variables$D13_FEBRE_VACINA)
+
+bancoAdj$variables$Z_tomou<-NA
+bancoAdj$variables$Z_tomou[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                             bancoAdj$variables$D13_FEBRE_VACINA== "Sim"]<-"pos_tomou"
+bancoAdj$variables$Z_tomou[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                             bancoAdj$variables$D13_FEBRE_VACINA== "Sim"]<-"neg_tomou"
+bancoAdj$variables$Z_ntomou<-NA
+bancoAdj$variables$Z_ntomou[bancoAdj$variables$F07_Z_G_VALOR_C=="Reagente"& 
+                              bancoAdj$variables$D13_FEBRE_VACINA== "Não"] <-"pos_ntomou"
+bancoAdj$variables$Z_ntomou[bancoAdj$variables$F07_Z_G_VALOR_C=="Não reagente"& 
+                              bancoAdj$variables$D13_FEBRE_VACINA== "Não"] <-"neg_ntomou"
+table(bancoAdj$variables$D13_FEBRE_VACINA,bancoAdj$variables$F07_Z_G_VALOR_C)
+table(bancoAdj$variables$Z_tomou)
+table(bancoAdj$variables$Z_ntomou)
+
+#### tomou a vacina ####
+
+# n
+table(bancoAdj$variables$Z_tomou)
+
+# N
+svytable(~Z_tomou, bancoAdj, round=TRUE)
+svytotal(~Z_tomou, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(566,2084,"z")
+#test(566,1056,"z")
+test(566,1162,"z")
+
+#### n tomou a vacina ####
+
+# n
+table(bancoAdj$variables$Z_ntomou)
+
+# N
+svytable(~Z_ntomou, bancoAdj, round=TRUE)
+svytotal(~Z_ntomou, design=bancoAdj, na.rm=T)
+
+## prevalência e intervalo de conf
+#test(490,2084,"z")
+#test(490,1056,"z")
+test(490,888,"z")
 
 
 
@@ -226,6 +869,8 @@ svy_bgadjust(
 tab_chik <-table(sangue$F11_C_G_VALOR_C, sangue$D13_FEBRE_VACINA)
 tab_chik
 addmargins(tab_chik)
+prop.table(tab_chik)
+addmargins(prop.table(tab_chik))
 
 ## teste de qui-quadrado p/ independência
 chisq.test(sangue$F11_C_G_VALOR_C, sangue$D13_FEBRE_VACINA)
@@ -244,6 +889,8 @@ GoodmanKruskalGamma(tab_chik)
 tab_deng <-table(sangue$F03_D_G_VALOR_C, sangue$D13_FEBRE_VACINA)
 tab_deng
 addmargins(tab_deng)
+prop.table(tab_deng)
+addmargins(prop.table(tab_deng))
 
 ## teste de qui-quadrado p/ independência
 chisq.test(sangue$F03_D_G_VALOR_C, sangue$D13_FEBRE_VACINA)
@@ -262,6 +909,8 @@ GoodmanKruskalGamma(tab_deng)
 tab_zika <-table(sangue$F07_Z_G_VALOR_C, sangue$D13_FEBRE_VACINA)
 tab_zika
 addmargins(tab_zika)
+prop.table(tab_zika)
+addmargins(prop.table(tab_zika))
 
 ## teste de qui-quadrado p/ independência
 chisq.test(sangue$F07_Z_G_VALOR_C, sangue$D13_FEBRE_VACINA)
