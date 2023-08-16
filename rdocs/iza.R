@@ -68,7 +68,15 @@ theme_estat <- function(...) {
 caminho_chik <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/resultados/iza/Pacote chikungunya"
 
 ##analise 1 Sexo
-chic <- banco %>%
+###banco nomeando colunas
+sexo<-data.frame(plano[["variables"]][["b04_sexo"]], plano[["variables"]][["CHIK_PRNT20"]])
+sexo <- na.omit(sexo)
+colnames(sexo)  <- c("sexo","Chikungunya")
+sexo$Chikungunya[sexo$Chikungunya == "NEG"] <- "Negativo"
+sexo$Chikungunya[sexo$Chikungunya == "POS"] <- "Positivo"
+
+###gráfico
+chic <- sexo %>%
   mutate(sexo = case_when(
     sexo %>% str_detect("Feminino") ~ "Feminino",
     sexo %>% str_detect("Masculino") ~ "Masculino"
@@ -97,6 +105,7 @@ ggplot(chic) +
   labs(x = "Sexo", y = "Frequência") +
   theme_estat()
 ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-sexchik.pdf"), width = 158, height = 93, units = "mm")
+ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-sexchik.png"), width = 158, height = 93, units = "mm")
 
 ####analise 2 cor
 ##Puxando o banco e tirando as NAs
@@ -144,7 +153,15 @@ ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-corchik.pdf"), width =
 
 
 ####Analise 3 casa
-tipo_casa <- banco %>%
+###banco e nomeando colunas
+casa<-data.frame(plano[["variables"]][["c01_tipo"]], plano[["variables"]][["CHIK_PRNT20"]])
+casa <- na.omit(casa)
+colnames(casa)  <- c("tipo de residencia","Chikungunya")
+casa$Chikungunya[casa$Chikungunya == "NEG"] <- "Negativo"
+casa$Chikungunya[casa$Chikungunya == "POS"] <- "Positivo"
+
+###gráfico
+tipo_casa <- casa %>%
   mutate(`tipo de residencia` = case_when(
     `tipo de residencia` %>% str_detect("Casa de vila ou em condomínio") ~ "Casa de vila ou \nem condomínio",
     `tipo de residencia` %>% str_detect("Casa") ~ "Casa",
@@ -164,7 +181,8 @@ legendas <- str_squish(str_c(tipo_casa$freq, "(", porcentagens, ")"))
 ggplot(tipo_casa) +
   aes(
     x = fct_reorder(`tipo de residencia`, freq, .desc = T), y = freq,
-    fill = Chikungunya) +
+    fill = Chikungunya, label = legendas
+    ) +
   geom_col(position = position_dodge2(preserve = "single", padding = 0)) +
   geom_text(aes(label = paste(freq, "(", freq_relativa, "%)")),
             position = position_dodge(width = .9),
@@ -175,10 +193,20 @@ ggplot(tipo_casa) +
   labs(x = "Tipos de residência", y = "Frequência") +
   theme_estat()
 ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-reschik.pdf"), width = 158, height = 93, units = "mm")
+ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-reschik.png"), width = 158, height = 93, units = "mm")
 
 
 ####Analise 4 vacina
-vacina_chik <- banco %>%
+###banco e nomeando colunas
+vacina<-data.frame(plano[["variables"]][["d13_febre_vacina"]], plano[["variables"]][["CHIK_PRNT20"]])
+vacina <- na.omit(vacina) 
+colnames(vacina)  <- c("vacina","Chikungunya")
+vacina$Chikungunya[vacina$Chikungunya == "NEG"] <- "Negativo"
+vacina$Chikungunya[vacina$Chikungunya == "POS"] <- "Positivo"
+
+###gráfico
+vacina_chik <- vacina %>%
+  filter(vacina != "Não sabe")%>%
   group_by(vacina, Chikungunya) %>%
   summarise(freq = n()) %>%
   mutate(
@@ -203,6 +231,7 @@ ggplot(vacina_chik) +
   labs(x = "Vacinação", y = "Frequência") +
   theme_estat()
 ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-vacchik.pdf"), width = 158, height = 93, units = "mm")
+ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-vacchik.png"), width = 158, height = 93, units = "mm")
 
 
  
@@ -210,14 +239,37 @@ ggsave(filename = file.path(caminho_chik,"colunas-bi-freq-vacchik.pdf"), width =
 ##Caminho 
 caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/resultados/iza/Zika PRNT"
 
- ###criando banco da zika
- banco_zikaPRNT <- banco_z %>% 
-   select(idade,sexo,Vacina,`Zika PRNT`, Cor) %>% 
-   filter(`Zika PRNT` == 'POS')
+ ###criando banco da zika e banco cor
+cor<-data.frame(plano[["variables"]][["b06_cor"]], plano[["variables"]][["CHIK_PRNT20"]])
+colnames(cor)[1] <- "Cor/Raça"
+colnames(cor)[2] <- "Chikungunya"
+cor$`Cor/Raça` <- ifelse(
+  cor$`Cor/Raça` %in% c("Branca", "Amarela"),
+  "Não negros",
+  "Negros"
+)
 
+banco_zika <- sangue %>% 
+  dplyr:: select(B05_IDADE, 
+                 B04_SEXO, 
+                 D13_FEBRE_VACINA, 
+                 F07_Z_G_VALOR_C,
+  )
+colnames(banco_zika)  <- c("idade","sexo","vacina", "Zika")
+
+#Junta os bandos um do lado do outro
+banco_z <- bind_cols(banco_zika, cor)
+
+
+banco_z <- banco_z %>% 
+   select(idade,sexo,vacina,Zika,`Cor/Raça`) %>% 
+   filter(Zika == 'Reagente')
+
+##Juntando com o cor
+bancoz <- bind_cols(banco_zika, cor)
  
 ##Sexo
- sex_zik <- banco_zikaPRNT %>%
+ sex_zik <- banco_z %>%
    filter(!is.na(sexo)) %>%
    count(sexo) %>%
    mutate(
@@ -237,10 +289,10 @@ caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/r
    geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
    geom_text(
      position = position_dodge(width = .9),
-     vjust = -0.5, # hjust = .5,
+     vjust = -0.5,  hjust = 0.5,
      size = 3
    ) +
-   scale_y_continuous(breaks = seq(0,350, by = 100), limits = c(0,310))+
+   scale_y_continuous(breaks = seq(0,650, by = 100), limits = c(0,625))+
    labs(x = "Sexo", y = "Frequência") +
    theme_estat()
  
@@ -249,9 +301,10 @@ caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/r
  
  
  ##Vacina
- vac_zik <- banco_zikaPRNT %>%
-   filter(!is.na(Vacina)) %>%
-   count(Vacina) %>%
+ ##Quantidade de NA =15
+ vac_zik <- banco_z %>%
+   filter(!is.na(vacina)) %>%
+   count(vacina) %>%
    mutate(
      freq = n %>% percent(),
    ) %>%
@@ -262,18 +315,18 @@ caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/r
  
  ggplot(vac_zik) +
    aes(
-     x = fct_reorder(Vacina, n, .desc = T),
+     x = fct_reorder(vacina, n, .desc = T),
      y = n,
      label = label
    ) +
    geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
    geom_text(
      position = position_dodge(width = .9),
-     vjust = -0.5, # hjust = .5,
+     vjust = -0.5,  hjust = .5,
      size = 3
    ) +
-   scale_y_continuous(breaks = seq(0,300, by = 100), limits = c(0,300))+
-   labs(x = "Vacina", y = "Frequência") +
+   scale_y_continuous(breaks = seq(0,600, by = 100), limits = c(0,600))+
+   labs(x = "Vacinação", y = "Frequência") +
    theme_estat()
  
  ggsave(filename = file.path(caminho_zika,"colunas-uni-freq-vaczik.pdf"), width = 158, height = 93, units = "mm")
@@ -281,9 +334,9 @@ caminho_zika <- "C:/Users/izade/OneDrive/Área de Trabalho/ESTAT/pf23025-GEANI/r
  
  
  ###Cor
-cor_zik <- banco_zikaPRNT %>%
-   filter(!is.na(Cor)) %>%
-   count(Cor) %>%
+cor_zik <- banco_z %>%
+   filter(!is.na(`Cor/Raça`)) %>%
+   count(`Cor/Raça`) %>%
    mutate(
      freq = n %>% percent(),
    ) %>%
@@ -294,18 +347,18 @@ cor_zik <- banco_zikaPRNT %>%
  
  ggplot(cor_zik) +
    aes(
-     x = fct_reorder(Cor, n, .desc = T),
+     x = fct_reorder(`Cor/Raça`, n, .desc = T),
      y = n,
      label = label
    ) +
    geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
    geom_text(
      position = position_dodge(width = .9),
-     vjust = -0.5, # hjust = .5,
+     vjust = -0.5,  hjust = .5,
      size = 3
    ) +
-   scale_y_continuous(breaks = seq(0,350, by = 100), limits = c(0,330))+
-   labs(x = "Cor", y = "Frequência") +
+   scale_y_continuous(breaks = seq(0,660, by = 100), limits = c(0,660))+
+   labs(x = "Raça/Cor", y = "Frequência") +
    theme_estat()
  
  ggsave(filename = file.path(caminho_zika,"colunas-uni-freq-corzik.pdf"), width = 158, height = 93, units = "mm")
@@ -317,10 +370,10 @@ cor_zik <- banco_zikaPRNT %>%
  limites_classes_idades <- c(0,11,18,29,59,Inf)
  
  #agrupar as idades nas classes
- banco_zikaPRNT$idade <- cut(banco_zikaPRNT$idade, breaks = limites_classes_idades, labels = c("0-11", "12-18", "19-29", "30-59", ">=60"))
+ banco_z$idade <- cut(banco_z$idade, breaks = limites_classes_idades, labels = c("0-11", "12-18", "19-29", "30-59", ">=60"))
  
  #Gráfico
- idade_zik <- banco_zikaPRNT %>%
+ idade_zik <- banco_z %>%
    filter(!is.na(idade)) %>%
    count(idade) %>%
    mutate(
@@ -340,11 +393,11 @@ cor_zik <- banco_zikaPRNT %>%
    geom_bar(stat = "identity", fill = "#A11D21", width = 0.7) +
    geom_text(
      position = position_dodge(width = .9),
-     vjust = -0.5, # hjust = .5,
+     vjust = -0.5, hjust = .5,
      size = 3
    ) +
-   scale_y_continuous(breaks = seq(0,260, by = 100), limits = c(0,260))+
-   labs(x = "Idade", y = "Frequência") +
+   scale_y_continuous(breaks = seq(0,550, by = 100), limits = c(0,520))+
+   labs(x = "Grupo Etário (Anos completos)", y = "Frequência") +
    theme_estat()
  
  ggsave(filename = file.path(caminho_zika,"colunas-uni-freq-idadezik.pdf"), width = 158, height = 93, units = "mm")
